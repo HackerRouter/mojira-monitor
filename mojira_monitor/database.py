@@ -51,6 +51,15 @@ class Database:
     def close(self):
         self.conn.close()
 
+    def bind_monitor(self, monitor_id):
+        """Adopt a legacy DB once; prevent accidental reuse by another monitor."""
+        with self.conn:
+            self.conn.execute("BEGIN IMMEDIATE")
+            existing = self.get_meta("monitor_id")
+            if existing is not None and existing != monitor_id:
+                raise ValueError(f"此数据库已属于监控 {existing}，不可由 {monitor_id} 覆盖；请使用另一 database")
+            self.conn.execute("INSERT OR IGNORE INTO metadata VALUES ('monitor_id',?)", (monitor_id,))
+
     def get_meta(self, key):
         row = self.conn.execute("SELECT value FROM metadata WHERE key=?", (key,)).fetchone()
         return row[0] if row else None

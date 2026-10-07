@@ -44,7 +44,7 @@ class Monitor:
         action = self.db.save_bug(issue, decision)
         self.db.mark_seen(issue, self.source.identity, self.classifier.version)
         if action in {"created", "removed", "restored"}:
-            log.info("%s %s %s", action, issue.key, issue.summary)
+            log.info("[%s] %s %s %s", self.config.monitor_id, action, issue.key, issue.summary)
         return action
 
     def collect(self, *, backfill=False):
@@ -90,7 +90,7 @@ class Monitor:
                         except SourceError as exc:
                             stats["errors"].append(f"{issue.key}: {exc}")
                             self.db.mark_error(issue.key, exc)
-                            log.warning("%s: %s", issue.key, exc)
+                            log.warning("[%s] %s: %s", self.config.monitor_id, issue.key, exc)
                     if not page.has_more or (dates and min(dates) < since):
                         stats["complete"] = True
                         break
@@ -104,7 +104,7 @@ class Monitor:
                     self.db.set_meta(self.checkpoint_key(project), iso(started))
             except SourceError as exc:
                 stats["errors"].append(str(exc))
-                log.error("%s: %s", project, exc)
+                log.error("[%s] %s: %s", self.config.monitor_id, project, exc)
             result["errors"] += len(stats["errors"])
             result["projects"][project] = stats
         if backfill and not result["errors"]:
@@ -127,6 +127,6 @@ class Monitor:
                 self.db.mark_error(row["key"], exc)
                 result["errors"] += 1
                 result["failures"].append({"key": row["key"], "error": str(exc)})
-                log.warning("复查 %s: %s", row["key"], exc)
+                log.warning("[%s] 复查 %s: %s", self.config.monitor_id, row["key"], exc)
         self.db.finish_run(run, result)
         return result

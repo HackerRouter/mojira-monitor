@@ -24,6 +24,8 @@ min_interval_seconds = 1
 retries = 3
 
 [classification]
+mode = "crash" # crash（内置崩溃分类） / keywords（通用关键词） / all（全部）
+fields = ["summary", "description", "environment"]
 include_hangs = false
 # 正则表达式，大小写不敏感；额外规则仅表示疑似崩溃
 extra_patterns = []
@@ -36,3 +38,52 @@ model = ""
 api_key_env = "MOJIRA_AI_API_KEY"
 min_confidence = 0.75
 max_chars = 16000
+
+# 每个监控项继承上方公共配置；可独立覆盖 projects、source 及各配置节。
+# 独立数据库和检查点，不会因另一个监控项的规则而移除记录。
+[[monitors]]
+id = "crashes"
+name = "Minecraft 崩溃报告"
+enabled = true
+database = "data/mojira.sqlite3" # 继续使用第一版的数据库
+tags = ["stability", "crash"]
+
+[[monitors]]
+id = "bedrock-performance"
+name = "基岩版性能问题"
+enabled = false # 改为 true 自动运行；也可 --monitor bedrock-performance 单独运行
+projects = ["MCPE", "BDS"]
+tags = ["performance", "bedrock"]
+# 未指定 database 时自动生成 data/mojira.bedrock-performance.sqlite3
+
+[monitors.classification]
+mode = "keywords"
+category = "performance"
+keywords_any = ["fps", "stutter", "帧率", "卡顿"]
+keywords_all = []
+exclude_keywords = ["feature request"]
+patterns_any = ['\blag(?:gy|ging)?\b'] # 单词边界，避免把 villager 当作 lag
+exclude_patterns = []
+case_sensitive = false
+
+[monitors.polling]
+collect_minutes = 30
+
+[[monitors]]
+id = "java-redstone"
+name = "Java 红石问题"
+enabled = false
+projects = ["MC"]
+tags = ["redstone"]
+
+[monitors.classification]
+mode = "keywords"
+category = "redstone"
+keywords_any = ["redstone", "piston", "红石", "活塞"]
+fields = ["summary", "description"]
+
+[monitors.filters]
+# 以下是 issue 自身的 labels，大小写精确匹配。MC / MCPE 应写在 projects。
+labels_any = [] # 任意命中，例如 ["实际存在的标签"]
+labels_all = [] # 必须全部包含
+exclude_labels = [] # 任意命中即排除

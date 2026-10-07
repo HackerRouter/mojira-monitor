@@ -1,1 +1,1 @@
-"""Minecraft crash report monitoring."""
+"""Configurable Minecraft issue monitoring."""

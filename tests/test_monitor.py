@@ -26,7 +26,7 @@ def official(i):
         "summary": i.summary, "updated": i.updated_date,
         "description": {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": i.description}]}]},
         "resolution": None if i.resolution == "Unresolved" else {"name": i.resolution},
-        "status": {"name": "Open"}, "versions": [{"name": "26.3"}], "issuelinks": [],
+        "status": {"name": "Open"}, "versions": [{"name": "26.3"}], "issuelinks": [], "labels": i.labels,
     }}
 
 
@@ -293,7 +293,7 @@ def test_mirror_list_and_detail():
     requests = []
     def handler(request):
         requests.append(request)
-        item = {"key": "MC-1", "summary": "Client crashes", "updated_date": iso(utcnow()), "resolution": "Unresolved"}
+        item = {"key": "MC-1", "summary": "Client crashes", "updated_date": iso(utcnow()), "resolution": "Unresolved", "labels": []}
         if request.url.path.endswith("MC-1"):
             return httpx.Response(200, json=dict(item, description='{"type":"doc","content":[{"type":"text","text":"crash"}]}'))
         return httpx.Response(200, json={"issues": [item], "total_count": 1})

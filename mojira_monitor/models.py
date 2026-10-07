@@ -89,6 +89,8 @@ class Issue:
             raise ValueError("invalid issue key")
         if not isinstance(self.summary, str) or not isinstance(self.resolution, str):
             raise ValueError("invalid issue fields")
+        if not isinstance(self.labels, list) or any(not isinstance(label, str) for label in self.labels):
+            raise ValueError("invalid issue labels")
         self.updated_date = iso(parse_time(self.updated_date))
 
     @property
@@ -131,7 +133,7 @@ def from_official(data: dict) -> Issue:
         status=(f.get("status") or {}).get("name"), created_date=f.get("created"),
         affected_versions=[v["name"] for v in f.get("versions") or []],
         fix_versions=[v["name"] for v in f.get("fixVersions") or []],
-        labels=f.get("labels") or [], links=links,
+        labels=(f["labels"] if "description" in f else f.get("labels")) or [], links=links,
         attachments=[{k: a.get(k) for k in ("id", "filename", "size", "mimeType")} for a in f.get("attachment") or []],
         raw=data, full="description" in f,
     )
@@ -143,6 +145,6 @@ def from_mirror(data: dict, *, full: bool) -> Issue:
         resolution=data["resolution"], description=plain_text(data.get("description")),
         environment=plain_text(data.get("environment")), status=data.get("status"),
         created_date=data.get("created_date"), affected_versions=data.get("affected_versions") or [],
-        fix_versions=data.get("fix_versions") or [], labels=data.get("labels") or [],
+        fix_versions=data.get("fix_versions") or [], labels=(data["labels"] if full else data.get("labels")) or [],
         source="mirror", raw=data, full=full,
     )

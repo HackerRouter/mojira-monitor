@@ -1,0 +1,34 @@
+# 独立配置文件：只跟踪 Java 的存档/区块问题，不要求提到崩溃。
+# 路径相对于本文件（examples/），因此使用 ../data/。
+monitor_id = "world-data"
+name = "存档与区块问题"
+database = "../data/world-data.sqlite3"
+projects = ["MC"]
+source = "official"
+tags = ["world", "data-integrity"]
+
+[classification]
+mode = "keywords"
+category = "world_data"
+keywords_any = ["corrupt", "missing chunks", "存档损坏", "区块丢失"]
+# any 组由 keywords_any 和 patterns_any 共同组成，至少命中一项。
+patterns_any = ['\bworld\s+(?:data\s+)?loss\b']
+keywords_all = [] # 填入后，还必须包含这里的全部关键词
+exclude_keywords = []
+exclude_patterns = []
+fields = ["summary", "description"]
+case_sensitive = false
+
+[filters]
+labels_any = []
+labels_all = []
+exclude_labels = []
+
+[polling]
+collect_minutes = 30
+recheck_hours = 24
+
+[ai]
+mode = "off"
+# 启用 AI 时可补充语义目标，例如“仅关注游戏自身导致的存档或区块数据丢失”。
+criteria = "仅关注游戏自身导致的存档或区块数据丢失、损坏。"

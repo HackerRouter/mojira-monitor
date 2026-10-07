@@ -1,0 +1,17 @@
+monitor_id = "all-java"
+name = "Java 最近更新报告"
+database = "../data/all-java.sqlite3"
+projects = ["MC"]
+source = "official"
+
+[classification]
+mode = "all"
+category = "java_report"
+# 不要求关键词；仍受 projects、filters、exclude_keywords/exclude_patterns 约束。
+
+[polling]
+collect_minutes = 60
+bootstrap_pages = 1
+
+[ai]
+mode = "off"

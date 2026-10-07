@@ -24,7 +24,7 @@ class JsonHTTP:
         self.config = config
         self.client = client or httpx.Client(
             timeout=config.timeout_seconds, follow_redirects=False,
-            headers={"User-Agent": "MojiraCrashMonitor/0.1", "Accept": "application/json"},
+            headers={"User-Agent": "MojiraMonitor/0.2", "Accept": "application/json"},
         )
         self.sleep = sleeper
         self.clock = clock
