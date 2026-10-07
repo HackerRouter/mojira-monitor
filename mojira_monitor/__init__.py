@@ -1,0 +1,1 @@
+"""Minecraft crash report monitoring."""

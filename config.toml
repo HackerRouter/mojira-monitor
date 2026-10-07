@@ -1,0 +1,38 @@
+# 路径相对于此配置文件。Python 3.11+
+database = "data/mojira.sqlite3"
+projects = ["MC", "MCPE", "BDS"]
+source = "official" # official 或 mirror；当前环境 mirror 会触发 Cloudflare 验证
+official_url = "https://bugs.mojang.com/api/jql-search-post"
+mirror_url = "https://mojira.dev/api/v1"
+
+[polling]
+collect_minutes = 20
+recheck_hours = 12
+duplicate_recheck_hours = 168 # 软删除报告仍低频复查，以便重开后恢复
+recheck_batch = 100
+page_size = 50
+bootstrap_pages = 2 # 首次只初始化最近的一部分报告（每项目最多 100 条）
+initial_hours = 24
+overlap_hours = 6
+max_pages = 30 # 增量触顶不会推进检查点；请增大此值处理积压
+backfill_hours = 168 # 每天回扫最近 7 天，缓解镜像延迟和分页变化
+backfill_interval_hours = 24
+
+[http]
+timeout_seconds = 30
+min_interval_seconds = 1
+retries = 3
+
+[classification]
+include_hangs = false
+# 正则表达式，大小写不敏感；额外规则仅表示疑似崩溃
+extra_patterns = []
+
+[ai]
+mode = "off" # off / candidates（规则命中） / all（所有新/变更报告）
+# 可选：兼容 Chat Completions 格式的服务。密钥只从环境变量读取。
+base_url = ""
+model = ""
+api_key_env = "MOJIRA_AI_API_KEY"
+min_confidence = 0.75
+max_chars = 16000

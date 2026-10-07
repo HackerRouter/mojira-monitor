@@ -1,0 +1,18 @@
+[Unit]
+Description=Mojira crash report monitor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mojira
+WorkingDirectory=/opt/mojira-monitor
+ExecStart=/opt/mojira-monitor/.venv/bin/mojira-monitor --config /opt/mojira-monitor/config.toml run
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=60
+TimeoutStopSec=300
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
