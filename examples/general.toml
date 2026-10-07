@@ -1,7 +1,7 @@
-# 独立配置文件：只跟踪 Java 的存档/区块问题，不要求提到崩溃。
-# 路径相对于本文件（examples/），因此使用 ../data/。
+# Standalone configuration for Java world and chunk issues, without requiring a crash.
+# Paths are relative to this file in examples/, so use ../data/.
 monitor_id = "world-data"
-name = "存档与区块问题"
+name = "World and chunk data issues"
 database = "../data/world-data.sqlite3"
 projects = ["MC"]
 source = "official"
@@ -10,10 +10,10 @@ tags = ["world", "data-integrity"]
 [classification]
 mode = "keywords"
 category = "world_data"
-keywords_any = ["corrupt", "missing chunks", "存档损坏", "区块丢失"]
-# any 组由 keywords_any 和 patterns_any 共同组成，至少命中一项。
+keywords_any = ["corrupt", "missing chunks", "world corruption", "chunk loss"]
+# keywords_any and patterns_any form one group; at least one expression must match.
 patterns_any = ['\bworld\s+(?:data\s+)?loss\b']
-keywords_all = [] # 填入后，还必须包含这里的全部关键词
+keywords_all = [] # Also require every keyword in this list when it is nonempty.
 exclude_keywords = []
 exclude_patterns = []
 fields = ["summary", "description"]
@@ -30,5 +30,5 @@ recheck_hours = 24
 
 [ai]
 mode = "off"
-# 启用 AI 时可补充语义目标，例如“仅关注游戏自身导致的存档或区块数据丢失”。
-criteria = "仅关注游戏自身导致的存档或区块数据丢失、损坏。"
+# Optional relevance criteria used when AI classification is enabled.
+criteria = "Only track world or chunk data loss and corruption caused by the game itself."

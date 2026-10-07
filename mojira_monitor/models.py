@@ -36,7 +36,6 @@ class _HTMLText(HTMLParser):
 
 
 def plain_text(value) -> str:
-    """Handle ADF objects, JSON-encoded ADF, legacy text, and HTML."""
     if value is None:
         return ""
     if isinstance(value, str):
@@ -119,7 +118,6 @@ class Issue:
 
 def from_official(data: dict) -> Issue:
     f = data["fields"]
-    # Missing resolution is a schema error, not proof of an unresolved issue.
     resolution = f["resolution"]
     links = []
     for link in f.get("issuelinks") or []:

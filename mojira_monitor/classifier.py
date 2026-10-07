@@ -14,13 +14,13 @@ from .models import Issue
 CRASH = re.compile(
     r"\bcrash(?:es|ed|ing)?\b|\b(?:out[ -]of[ -]memory|oom|watchdog|segmentation fault)\b"
     r"|EXCEPTION_ACCESS_VIOLATION|OutOfMemoryError|StackOverflowError|\bSIGSEGV\b|\b(?:ticking entity|ticking block entity)\b"
-    r"|\b(?:game|minecraft|client|server)\s+(?:unexpectedly\s+)?(?:closes|quits|exits)\b"
-    r"|崩溃|崩服|闪退", re.I,
+    r"|\b(?:game|minecraft|client|server)\s+(?:unexpectedly\s+)?(?:closes|quits|exits)\b",
+    re.I,
 )
-HANG = re.compile(r"\b(?:freez(?:e|es|ing)|frozen|hangs?|hanging|deadlock|not responding|unresponsive)\b|卡死|无响应|死锁", re.I)
-SERVER = re.compile(r"\b(?:dedicated server|server|watchdog)\b|崩服|服务端|服务器", re.I)
-CLIENT = re.compile(r"\b(?:client|desktop|launcher|launching|rendering|gpu)\b|客户端|闪退", re.I)
-NEGATION = re.compile(r"\b(?:no|not|never|without|doesn't|does not|don't|do not)\s+(?:\w+\s+){0,2}$|(?:不会|没有|并未|不再|未发生)$", re.I)
+HANG = re.compile(r"\b(?:freez(?:e|es|ing)|frozen|hangs?|hanging|deadlock|not responding|unresponsive)\b", re.I)
+SERVER = re.compile(r"\b(?:dedicated server|server|watchdog)\b", re.I)
+CLIENT = re.compile(r"\b(?:client|desktop|launcher|launching|rendering|gpu)\b", re.I)
+NEGATION = re.compile(r"\b(?:no|not|never|without|doesn't|does not|don't|do not)\s+(?:\w+\s+){0,2}$", re.I)
 ALLOWED = {"server_crash", "client_crash", "crash_unspecified", "hang", "other", "uncertain"}
 
 
@@ -50,13 +50,12 @@ class Classifier:
         self.excluded += [re.compile(p, flags) for p in rules.exclude_patterns]
         self.version = config.classifier_version()
         if config.ai.mode != "off" and not os.environ.get(config.ai.api_key_env):
-            raise ValueError(f"AI 已启用，但环境变量 {config.ai.api_key_env} 未设置")
+            raise ValueError(f"AI is enabled, but environment variable {config.ai.api_key_env} is not set")
 
     def text(self, issue: Issue) -> str:
         return "\n".join(getattr(issue, name) for name in self.config.classification.fields).strip()
 
     def eligible(self, issue: Issue) -> bool:
-        """Project/label/exclusion constraints cannot be overridden by AI."""
         if issue.key.split("-")[0] not in self.config.projects:
             return False
         labels = set(issue.labels)
@@ -92,8 +91,6 @@ class Classifier:
                     continue
                 matches.append(text[max(0, match.start() - 100):match.end() + 100].strip())
         if matches:
-            # Prefer the title, then snippets around crash evidence. A generic server
-            # mention elsewhere in a client report must not dominate the category.
             context = issue.summary if "summary" in rules.fields and CRASH.search(issue.summary) else "\n".join(matches)
             if SERVER.search(context) and not CLIENT.search(context):
                 category = "server_crash"
@@ -116,7 +113,7 @@ class Classifier:
         if ai.mode == "off" or (ai.mode == "candidates" and not rules.relevant and rules.category != "hang"):
             return rules
         if self.http is None:
-            raise SourceError("AI HTTP 客户端未配置")
+            raise SourceError("The AI HTTP client is not configured")
         text = self.text(issue)[:ai.max_chars]
         crash_mode = self.config.classification.mode == "crash"
         instructions = (
@@ -163,8 +160,7 @@ class Classifier:
             if category not in {"other", "uncertain"} and not evidence:
                 raise ValueError("missing evidence")
         except (KeyError, IndexError, TypeError, ValueError) as exc:
-            # Do not cache a failure as a negative classification; retry next run.
-            raise SourceError("AI 返回格式或证据校验失败") from exc
+            raise SourceError("AI response format or evidence validation failed") from exc
         if category == "uncertain" or confidence < ai.min_confidence:
             rules.method = "keywords_ai_uncertain"
             return rules

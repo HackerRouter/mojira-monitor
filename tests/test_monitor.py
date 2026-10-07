@@ -79,8 +79,8 @@ def test_adf_encoded_and_plain_text():
     ("Dedicated server crashes on startup", "server_crash", True),
     ("Client crashes rendering chunks", "client_crash", True),
     ("Game crashes", "crash_unspecified", True),
-    ("服务器崩服", "server_crash", True),
-    ("客户端闪退", "client_crash", True),
+    ("Server crashes", "server_crash", True),
+    ("Client crashes", "client_crash", True),
     ("The game does not crash", "other", False),
     ("Without crashing, the server disconnects", "other", False),
     ("The game freezes", "hang", False),
@@ -113,7 +113,6 @@ def test_collect_dedup_duplicate_remove_restore(setup):
     assert monitor.recheck(force=True)["actions"] == {"removed": 1}
     assert list(db.rows()) == []
     assert db.get_bug("MC-1")["duplicate_of"] == "MC-99"
-    # Rediscovery cannot reinsert a stale formerly-unresolved snapshot.
     source.pages[("MC", 1)] = Page([dupe], False)
     assert monitor.collect()["errors"] == 0
     assert db.stats()["active"] == 0
@@ -323,14 +322,14 @@ def test_long_retry_after_is_not_shortened():
     with pytest.raises(SourceError, match="429"):
         client.request("GET", "https://example.test")
     assert not sleeps
-    with pytest.raises(SourceError, match="冷却期"):
+    with pytest.raises(SourceError, match="cooldown"):
         client.request("GET", "https://example.test/another-project")
     client.close()
 
 
 @pytest.mark.parametrize("response,match", [
     (httpx.Response(403, headers={"cf-mitigated": "challenge"}), "Cloudflare"),
-    (httpx.Response(200, text="<html>challenge</html>"), "非 JSON"),
+    (httpx.Response(200, text="<html>challenge</html>"), "non-JSON"),
     (httpx.Response(404), "404"),
 ])
 def test_http_failures_are_explicit(response, match):

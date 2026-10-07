@@ -23,18 +23,16 @@ class Monitor:
     def process(self, issue, *, force=False, reclassify=False):
         old = self.db.get_bug(issue.key)
         if old and parse_time(issue.updated_date) < parse_time(old["source_updated"]):
-            raise SourceError("数据源返回比本地更旧的报告，保留现有状态")
+            raise SourceError("The source returned an older report; keeping the current local state")
         if not force and self.db.seen(issue, self.source.identity, self.classifier.version):
             return "unchanged"
-        # New duplicate reports need no body/classification. Existing tracked ones
-        # need a full snapshot to retain source links and information.
         if issue.duplicate and old is None:
             self.db.mark_seen(issue, self.source.identity, self.classifier.version)
             return "ignored_duplicate"
         if not issue.full:
             issue = self.source.issue(issue.key)
         if old and parse_time(issue.updated_date) < parse_time(old["source_updated"]):
-            raise SourceError("详情数据源落后，保留现有状态")
+            raise SourceError("The issue-detail response is stale; keeping the current local state")
         if issue.duplicate:
             decision = None
         elif old and not reclassify and self.db.seen(issue, self.source.identity, self.classifier.version):
@@ -68,14 +66,12 @@ class Monitor:
                     stats["pages"] += 1
                     dates = [parse_time(i.updated_date) for i in page.issues]
                     if dates != sorted(dates, reverse=True):
-                        raise SourceError("返回列表未按更新时间倒序，停止推进检查点")
+                        raise SourceError("Issues are not sorted by descending update time; checkpoint will not advance")
                     keys = {i.key for i in page.issues}
                     if keys and keys <= seen_keys:
-                        raise SourceError("分页重复，停止推进检查点")
-                    # Concurrent changes can move items between offset pages. We
-                    # deduplicate overlaps and recover omissions by overlap/backfill.
+                        raise SourceError("Duplicate page detected; checkpoint will not advance")
                     if dates and previous_oldest and dates[0] > previous_oldest:
-                        log.warning("%s 分页期间发生更新，将通过重叠窗口回扫", project)
+                        log.warning("%s changed during pagination; the overlap window will rescan it", project)
                     if dates:
                         previous_oldest = dates[-1]
                     for issue in page.issues:
@@ -97,9 +93,9 @@ class Monitor:
                 if not stats["complete"]:
                     if bootstrap:
                         stats["bootstrap_truncated"] = True
-                        log.info("%s 首次初始化达到 %s 页；按配置只采最近一部分", project, cap)
+                        log.info("%s reached the initial limit of %s pages; collecting only the configured recent subset", project, cap)
                     else:
-                        raise SourceError("达到 max_pages 仍未覆盖检查点；请增大 max_pages，本轮不推进检查点")
+                        raise SourceError("Reached max_pages before covering the checkpoint; increase max_pages to clear the backlog. Checkpoint will not advance")
                 if not stats["errors"] and not backfill:
                     self.db.set_meta(self.checkpoint_key(project), iso(started))
             except SourceError as exc:
@@ -127,6 +123,6 @@ class Monitor:
                 self.db.mark_error(row["key"], exc)
                 result["errors"] += 1
                 result["failures"].append({"key": row["key"], "error": str(exc)})
-                log.warning("[%s] 复查 %s: %s", self.config.monitor_id, row["key"], exc)
+                log.warning("[%s] Recheck %s: %s", self.config.monitor_id, row["key"], exc)
         self.db.finish_run(run, result)
         return result

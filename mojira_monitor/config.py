@@ -33,7 +33,7 @@ class HTTP:
 
 @dataclass
 class Classification:
-    mode: str = "crash"  # crash / keywords / all
+    mode: str = "crash"
     category: str = "matched"
     fields: list[str] = field(default_factory=lambda: ["summary", "description", "environment"])
     case_sensitive: bool = False
@@ -83,71 +83,71 @@ class Config:
 
     def validate(self):
         if not isinstance(self.monitor_id, str) or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", self.monitor_id):
-            raise ValueError("监控 id 只能包含字母、数字、下划线和短横线，最长 64 字符")
+            raise ValueError("Monitor IDs must start with a letter or digit and contain only letters, digits, underscores, or hyphens (maximum 64 characters)")
         if not isinstance(self.enabled, bool) or not isinstance(self.name, str):
-            raise ValueError("enabled 必须为布尔值，name 必须为字符串")
+            raise ValueError("enabled must be a boolean and name must be a string")
         string_list(self.tags, "tags")
         if self.source not in {"official", "mirror"}:
-            raise ValueError("source 必须为 official 或 mirror")
+            raise ValueError("source must be official or mirror")
         string_list(self.projects, "projects")
         if not self.projects or any(not re.fullmatch(r"[A-Z][A-Z0-9]*", p) for p in self.projects):
-            raise ValueError("projects 必须为非空的项目代码列表，如 MC、MCPE、BDS")
+            raise ValueError("projects must be a nonempty list of project codes such as MC, MCPE, or BDS")
         if len(set(self.projects)) != len(self.projects):
-            raise ValueError("projects 不可重复")
+            raise ValueError("projects must not contain duplicates")
         for name, value in vars(self.polling).items():
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
-                raise ValueError(f"polling.{name} 必须大于 0")
+                raise ValueError(f"polling.{name} must be greater than 0")
         for name in ("page_size", "bootstrap_pages", "max_pages", "recheck_batch"):
             if not isinstance(getattr(self.polling, name), int):
-                raise ValueError(f"polling.{name} 必须为整数")
+                raise ValueError(f"polling.{name} must be an integer")
         if self.polling.page_size > 100:
-            raise ValueError("page_size 最大为 100")
+            raise ValueError("page_size must not exceed 100")
         if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
                    for v in (self.http.timeout_seconds, self.http.min_interval_seconds)):
-            raise ValueError("HTTP 超时和请求间隔必须是有限数值")
+            raise ValueError("HTTP timeout and request interval must be finite numbers")
         if self.http.timeout_seconds <= 0 or self.http.min_interval_seconds < 0:
-            raise ValueError("HTTP 超时必须大于 0，请求间隔不可小于 0")
+            raise ValueError("HTTP timeout must be positive and request interval must be nonnegative")
         if not isinstance(self.http.retries, int) or not 0 <= self.http.retries <= 8:
-            raise ValueError("http.retries 必须为 0 到 8 的整数")
+            raise ValueError("http.retries must be an integer between 0 and 8")
         rules = self.classification
         if rules.mode not in {"crash", "keywords", "all"}:
-            raise ValueError("classification.mode 必须为 crash/keywords/all")
+            raise ValueError("classification.mode must be crash, keywords, or all")
         if not isinstance(rules.category, str) or not rules.category.strip():
-            raise ValueError("classification.category 必须为非空字符串")
+            raise ValueError("classification.category must be a nonempty string")
         if not isinstance(rules.case_sensitive, bool) or not isinstance(rules.include_hangs, bool):
-            raise ValueError("case_sensitive 和 include_hangs 必须为布尔值")
+            raise ValueError("case_sensitive and include_hangs must be booleans")
         for name in ("fields", "keywords_any", "keywords_all", "exclude_keywords", "patterns_any", "exclude_patterns", "extra_patterns"):
             string_list(getattr(rules, name), f"classification.{name}")
         if not rules.fields or set(rules.fields) - {"summary", "description", "environment"}:
-            raise ValueError("fields 可选择 summary、description、environment，且不可为空")
+            raise ValueError("fields must contain at least one of summary, description, or environment")
         for name, value in vars(self.filters).items():
             string_list(value, f"filters.{name}")
         for pattern in rules.extra_patterns + rules.patterns_any + rules.exclude_patterns:
             try:
                 re.compile(pattern)
             except re.error as exc:
-                raise ValueError(f"正则表达式无效: {exc}") from exc
+                raise ValueError(f"Invalid regular expression: {exc}") from exc
         if rules.mode == "keywords" and not any((rules.keywords_any, rules.keywords_all, rules.patterns_any,
                                                   rules.extra_patterns, self.filters.labels_any, self.filters.labels_all)):
-            raise ValueError("keywords 模式至少需要一项关键词、正则或正向标签条件；全部收集请使用 all 模式")
+            raise ValueError("keywords mode requires a keyword, regular expression, or positive label filter; use all mode to collect everything")
         if self.ai.mode not in {"off", "candidates", "all"}:
-            raise ValueError("ai.mode 必须为 off/candidates/all")
+            raise ValueError("ai.mode must be off, candidates, or all")
         if self.ai.mode != "off" and (not self.ai.base_url or not self.ai.model):
-            raise ValueError("启用 AI 时必须设置 base_url 和 model")
+            raise ValueError("base_url and model are required when AI is enabled")
         if not 0 <= self.ai.min_confidence <= 1 or self.ai.max_chars < 100:
-            raise ValueError("AI 置信度需在 0～1 之间，max_chars 至少为 100")
+            raise ValueError("AI confidence must be between 0 and 1, and max_chars must be at least 100")
         if not isinstance(self.ai.criteria, str):
-            raise ValueError("ai.criteria 必须为字符串")
+            raise ValueError("ai.criteria must be a string")
 
     def classifier_version(self) -> str:
-        data = {"rules_version": 2, "projects": self.projects, "filters": vars(self.filters),
+        data = {"rules_version": 3, "projects": self.projects, "filters": vars(self.filters),
                 "classification": vars(self.classification), "ai": vars(self.ai)}
         return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
 
 
 def string_list(value, name):
     if not isinstance(value, list) or any(not isinstance(s, str) or not s.strip() for s in value):
-        raise ValueError(f"{name} 必须为非空字符串组成的数组")
+        raise ValueError(f"{name} must be a list of nonempty strings")
 
 
 SECTIONS = {"polling": Polling, "http": HTTP, "classification": Classification, "filters": Filters, "ai": AI}
@@ -163,7 +163,6 @@ def build_config(data: dict, path: Path) -> Config:
 
 
 def load_configs(path: str | Path) -> list[Config]:
-    """Load legacy single-monitor TOML or independently inherited [[monitors]]."""
     path = Path(path).resolve()
     with path.open("rb") as f:
         data = tomllib.load(f)
@@ -171,11 +170,11 @@ def load_configs(path: str | Path) -> list[Config]:
     if profiles is None:
         return [build_config(data, path)]
     if not isinstance(profiles, list) or not profiles:
-        raise ValueError("monitors 必须是非空的 [[monitors]] 数组")
+        raise ValueError("monitors must be a nonempty array of [[monitors]] tables")
     configs = []
     for profile in profiles:
         if not isinstance(profile, dict) or not isinstance(profile.get("id"), str):
-            raise ValueError("每个 [[monitors]] 必须设置字符串 id")
+            raise ValueError("Each [[monitors]] entry must define a string id")
         own = dict(profile)
         monitor_id = own.pop("id")
         merged = {**data, **own, "monitor_id": monitor_id}
@@ -186,16 +185,16 @@ def load_configs(path: str | Path) -> list[Config]:
             merged["database"] = str(base.with_name(f"{base.stem}.{monitor_id}{base.suffix}"))
         configs.append(build_config(merged, path))
     if len({c.monitor_id for c in configs}) != len(configs):
-        raise ValueError("监控 id 不可重复")
+        raise ValueError("Monitor IDs must be unique")
     if len({c.database for c in configs}) != len(configs):
-        raise ValueError("每个监控项必须使用不同的 database，避免规则相互覆盖")
+        raise ValueError("Each monitor must use a separate database to prevent rules from overwriting each other")
     return configs
 
 
 def load_config(path: str | Path) -> Config:
     configs = load_configs(path)
     if len(configs) != 1:
-        raise ValueError("包含多个监控项，请使用 load_configs 或 CLI --monitor 选择")
+        raise ValueError("Multiple monitors are configured; use load_configs or select one with CLI --monitor")
     return configs[0]
 
 
@@ -203,10 +202,10 @@ def select_configs(configs: list[Config], ids: list[str] | None) -> list[Config]
     if ids:
         unknown = set(ids) - {c.monitor_id for c in configs}
         if unknown:
-            raise ValueError("未知监控 id: " + ", ".join(sorted(unknown)))
+            raise ValueError("Unknown monitor ID: " + ", ".join(sorted(unknown)))
         selected = [c for c in configs if c.monitor_id in ids]
     else:
         selected = [c for c in configs if c.enabled]
     if not selected:
-        raise ValueError("没有启用的监控项；请设置 enabled=true 或使用 --monitor 指定")
+        raise ValueError("No monitors are enabled; set enabled=true or select one with --monitor")
     return selected

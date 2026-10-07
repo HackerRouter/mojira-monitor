@@ -1,21 +1,21 @@
-# 路径相对于此配置文件。Python 3.11+
+# Paths are relative to this configuration file.
 database = "data/mojira.sqlite3"
 projects = ["MC", "MCPE", "BDS"]
-source = "official" # official 或 mirror；当前环境 mirror 会触发 Cloudflare 验证
+source = "official" # official or mirror; mirror access may require a Cloudflare challenge.
 official_url = "https://bugs.mojang.com/api/jql-search-post"
 mirror_url = "https://mojira.dev/api/v1"
 
 [polling]
 collect_minutes = 20
 recheck_hours = 12
-duplicate_recheck_hours = 168 # 软删除报告仍低频复查，以便重开后恢复
+duplicate_recheck_hours = 168 # Recheck inactive duplicates periodically so reopened reports can recover.
 recheck_batch = 100
 page_size = 50
-bootstrap_pages = 2 # 首次只初始化最近的一部分报告（每项目最多 100 条）
+bootstrap_pages = 2 # Limit initial collection to a recent subset (up to 100 reports per project).
 initial_hours = 24
 overlap_hours = 6
-max_pages = 30 # 增量触顶不会推进检查点；请增大此值处理积压
-backfill_hours = 168 # 每天回扫最近 7 天，缓解镜像延迟和分页变化
+max_pages = 30 # Hitting this limit does not advance the checkpoint; increase it to clear a backlog.
+backfill_hours = 168 # Rescan the last seven days to recover delayed or displaced reports.
 backfill_interval_hours = 24
 
 [http]
@@ -24,45 +24,45 @@ min_interval_seconds = 1
 retries = 3
 
 [classification]
-mode = "crash" # crash（内置崩溃分类） / keywords（通用关键词） / all（全部）
+mode = "crash" # crash (built-in crash classification), keywords (general matching), or all.
 fields = ["summary", "description", "environment"]
 include_hangs = false
-# 正则表达式，大小写不敏感；额外规则仅表示疑似崩溃
+# Additional regular expressions for suspected crashes; case-insensitive by default.
 extra_patterns = []
 
 [ai]
-mode = "off" # off / candidates（规则命中） / all（所有新/变更报告）
-# 可选：兼容 Chat Completions 格式的服务。密钥只从环境变量读取。
+mode = "off" # off, candidates (rule matches), or all (every new or changed eligible report).
+# Optional Chat Completions-compatible service. Read the API key from the named environment variable.
 base_url = ""
 model = ""
 api_key_env = "MOJIRA_AI_API_KEY"
 min_confidence = 0.75
 max_chars = 16000
 
-# 每个监控项继承上方公共配置；可独立覆盖 projects、source 及各配置节。
-# 独立数据库和检查点，不会因另一个监控项的规则而移除记录。
+# Each monitor inherits the defaults above and can override projects, source, or configuration sections.
+# Each monitor uses a separate database and checkpoints to keep its state independent.
 [[monitors]]
 id = "crashes"
-name = "Minecraft 崩溃报告"
+name = "Minecraft crash reports"
 enabled = true
-database = "data/mojira.sqlite3" # 继续使用第一版的数据库
+database = "data/mojira.sqlite3" # Reuse the database from the original single-monitor configuration.
 tags = ["stability", "crash"]
 
 [[monitors]]
 id = "bedrock-performance"
-name = "基岩版性能问题"
-enabled = false # 改为 true 自动运行；也可 --monitor bedrock-performance 单独运行
+name = "Bedrock performance issues"
+enabled = false # Set true to run by default, or select explicitly with --monitor bedrock-performance.
 projects = ["MCPE", "BDS"]
 tags = ["performance", "bedrock"]
-# 未指定 database 时自动生成 data/mojira.bedrock-performance.sqlite3
+# Omitting database generates data/mojira.bedrock-performance.sqlite3 automatically.
 
 [monitors.classification]
 mode = "keywords"
 category = "performance"
-keywords_any = ["fps", "stutter", "帧率", "卡顿"]
+keywords_any = ["fps", "stutter", "frame rate"]
 keywords_all = []
 exclude_keywords = ["feature request"]
-patterns_any = ['\blag(?:gy|ging)?\b'] # 单词边界，避免把 villager 当作 lag
+patterns_any = ['\blag(?:gy|ging)?\b'] # Word boundaries prevent matching lag inside villager.
 exclude_patterns = []
 case_sensitive = false
 
@@ -71,7 +71,7 @@ collect_minutes = 30
 
 [[monitors]]
 id = "java-redstone"
-name = "Java 红石问题"
+name = "Java redstone issues"
 enabled = false
 projects = ["MC"]
 tags = ["redstone"]
@@ -79,11 +79,11 @@ tags = ["redstone"]
 [monitors.classification]
 mode = "keywords"
 category = "redstone"
-keywords_any = ["redstone", "piston", "红石", "活塞"]
+keywords_any = ["redstone", "piston"]
 fields = ["summary", "description"]
 
 [monitors.filters]
-# 以下是 issue 自身的 labels，大小写精确匹配。MC / MCPE 应写在 projects。
-labels_any = [] # 任意命中，例如 ["实际存在的标签"]
-labels_all = [] # 必须全部包含
-exclude_labels = [] # 任意命中即排除
+# These filters match issue labels exactly and case-sensitively. Put MC or MCPE in projects instead.
+labels_any = [] # Match at least one label; use actual label names from the source.
+labels_all = [] # Require every listed label.
+exclude_labels = [] # Exclude reports containing any listed label.

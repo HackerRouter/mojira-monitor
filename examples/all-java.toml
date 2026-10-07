@@ -1,5 +1,5 @@
 monitor_id = "all-java"
-name = "Java 最近更新报告"
+name = "Recently updated Java reports"
 database = "../data/all-java.sqlite3"
 projects = ["MC"]
 source = "official"
@@ -7,7 +7,7 @@ source = "official"
 [classification]
 mode = "all"
 category = "java_report"
-# 不要求关键词；仍受 projects、filters、exclude_keywords/exclude_patterns 约束。
+# No keywords are required; project, label, and exclusion filters still apply.
 
 [polling]
 collect_minutes = 60

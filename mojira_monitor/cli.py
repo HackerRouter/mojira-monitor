@@ -29,7 +29,7 @@ def writer_lock(database):
         try:
             fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise ValueError("已有采集进程操作此数据库；请勿同时启动 run 和 cron") from exc
+            raise ValueError("Another process is using this database; do not run the daemon and cron simultaneously") from exc
         try:
             yield
         finally:
@@ -55,7 +55,7 @@ def daemon(monitors):
             last = monitor.db.get_meta(marker)
         backfill = time.monotonic() + max(0, cfg.backfill_interval_hours * 3600 - (utcnow() - parse_time(last)).total_seconds())
         schedules.append({"collect": 0.0, "recheck": 0.0, "backfill": backfill})
-        log.info("监控 %s 启动：projects=%s source=%s database=%s", monitor.config.monitor_id,
+        log.info("Starting monitor %s: projects=%s source=%s database=%s", monitor.config.monitor_id,
                  monitor.config.projects, monitor.config.source, monitor.config.database)
     try:
         while not stopped.is_set():
@@ -77,26 +77,26 @@ def daemon(monitors):
 
 
 def parser():
-    p = argparse.ArgumentParser(description="按项目、关键词和标签监控 Mojira 报告，并跟踪 Duplicate 状态")
-    p.add_argument("--config", default="config.toml", help="配置文件路径")
+    p = argparse.ArgumentParser(description="Monitor Mojira reports by project, keywords, and labels, and track duplicate resolutions")
+    p.add_argument("--config", default="config.toml", help="Path to the configuration file")
     p.add_argument("--verbose", action="store_true")
-    p.add_argument("--monitor", action="append", help="选择监控 id，可重复；默认使用所有 enabled=true 的监控项")
+    p.add_argument("--monitor", action="append", help="Select a monitor ID; repeat to select several (default: all enabled monitors)")
     commands = p.add_subparsers(dest="command", required=True)
-    commands.add_parser("monitors", help="列出所有监控项及有效配置（不显示密钥）")
-    commands.add_parser("init", help="初始化数据库")
-    commands.add_parser("doctor", help="检查每个项目的数据源连通性（只读）")
-    commands.add_parser("collect", help="采集一次最近新增/更新报告")
-    commands.add_parser("backfill", help="回扫配置中的历史时间窗口")
-    commands.add_parser("once", help="采集并复查一次，可交给 cron 调度")
-    commands.add_parser("run", help="持续运行定时采集、复查和回扫")
-    recheck = commands.add_parser("recheck", help="复查数据库中的报告")
-    recheck.add_argument("--force", action="store_true", help="忽略复查时间，但仍遵循 batch 限制")
-    listing = commands.add_parser("list", help="查看有效报告")
-    listing.add_argument("--all", action="store_true", help="包括软删除记录")
-    listing.add_argument("--limit", type=int, default=20, help="每个监控项的条数上限")
-    commands.add_parser("status", help="查看数量、检查点和最近任务结果")
-    export = commands.add_parser("export", help="导出 JSON 到标准输出或指定文件")
-    export.add_argument("--all", action="store_true", help="包括软删除记录")
+    commands.add_parser("monitors", help="List monitors and their effective configuration without secrets")
+    commands.add_parser("init", help="Initialize the databases")
+    commands.add_parser("doctor", help="Check source connectivity for each project (read-only)")
+    commands.add_parser("collect", help="Collect recently created or updated reports once")
+    commands.add_parser("backfill", help="Rescan the configured historical window")
+    commands.add_parser("once", help="Collect and recheck once, suitable for cron")
+    commands.add_parser("run", help="Continuously schedule collection, rechecks, and backfills")
+    recheck = commands.add_parser("recheck", help="Recheck stored reports")
+    recheck.add_argument("--force", action="store_true", help="Ignore recheck intervals while respecting the batch limit")
+    listing = commands.add_parser("list", help="List active reports")
+    listing.add_argument("--all", action="store_true", help="Include inactive reports")
+    listing.add_argument("--limit", type=int, default=20, help="Maximum number of reports per monitor")
+    commands.add_parser("status", help="Show counts, checkpoints, and recent run results")
+    export = commands.add_parser("export", help="Export JSON to standard output or a file")
+    export.add_argument("--all", action="store_true", help="Include inactive reports")
     export.add_argument("--output", type=Path)
     return p
 
@@ -116,7 +116,6 @@ def tagged_rows(config, db, args):
 def main(argv=None):
     args = parser().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    # HTTP debug logging may expose authentication details, including AI keys.
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     try:
@@ -127,13 +126,12 @@ def main(argv=None):
             return 0
         configs = select_configs(all_configs, args.monitor)
         if args.command == "list" and args.limit < 1:
-            raise ValueError("limit 必须大于 0")
+            raise ValueError("limit must be greater than 0")
         with ExitStack() as stack:
             writing = args.command in {"init", "run", "once", "collect", "backfill", "recheck"}
             if writing:
                 for config in sorted(configs, key=lambda c: str(c.database)):
                     stack.enter_context(writer_lock(config.database))
-            # Doctor is network-only; it must not create databases or require AI keys.
             if args.command == "doctor":
                 checks = []
                 for config in configs:
@@ -168,7 +166,7 @@ def main(argv=None):
                 output = getattr(args, "output", None)
                 if output:
                     if output.resolve() in {c.database for c in all_configs}:
-                        raise ValueError("导出文件不可覆盖数据库")
+                        raise ValueError("The export file must not overwrite a database")
                     output.parent.mkdir(parents=True, exist_ok=True)
                     with output.open("x", encoding="utf-8") as f:
                         json.dump(rows, f, ensure_ascii=False, indent=2)

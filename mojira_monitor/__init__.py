@@ -1,1 +1,0 @@
-"""Configurable Minecraft issue monitoring."""

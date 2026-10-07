@@ -25,7 +25,7 @@ def config(**kwargs):
 
 
 @pytest.mark.parametrize("updates,summary,expected", [
-    ({"keywords_any": ["piston", "红石"]}, "红石更新异常", True),
+    ({"keywords_any": ["piston", "redstone"]}, "Redstone updates incorrectly", True),
     ({"keywords_all": ["piston", "broken"]}, "Piston stuck", False),
     ({"keywords_all": ["piston", "broken"]}, "Piston is BROKEN", True),
     ({"keywords_any": [], "keywords_all": ["piston"]}, "Piston update", True),
@@ -125,7 +125,7 @@ keywords_any=["piston"]
 collect_minutes=21
 [[monitors]]
 id="redstone"
-name="红石"
+name="redstone"
 tags=["mechanics"]
 projects=["MC"]
 [monitors.polling]
@@ -152,7 +152,7 @@ def test_profiles_inherit_sections_and_isolate_databases(tmp_path):
     assert b.database == tmp_path / "data/issues.bedrock.db"
     assert select_configs(configs, None) == [a]
     assert select_configs(configs, ["bedrock"]) == [b]
-    with pytest.raises(ValueError, match="未知"):
+    with pytest.raises(ValueError, match="Unknown"):
         select_configs(configs, ["typo"])
 
 
@@ -172,7 +172,7 @@ def test_legacy_database_adopted_without_losing_reports(tmp_path):
     db.bind_monitor("crashes")
     assert db.get_bug(original.key)["active"] == 1
     assert db.get_meta("checkpoint:old:MC") == "existing-checkpoint"
-    with pytest.raises(ValueError, match="已属于"):
+    with pytest.raises(ValueError, match="already belongs"):
         db.bind_monitor("unrelated")
     assert db.get_meta("monitor_id") == "crashes"
     db.close()
